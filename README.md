@@ -9,6 +9,7 @@ import Flipper `.ir` files from a GitHub repository, such as IR Blaster Remote.
 - `ACs/Hantech/Hantech_A018-12KR2A.ir` - importable Flipper IR file
 - `ACs/Hantech/Hantech_A018-12KR2A_android_test.ir` - Android test variant with explicit trailing spaces
 - `ACs/Hantech/Hantech_A018-12KR2A_android_repeat_test.ir` - Android test variant with each frame sent twice
+- `ACs/Hantech/Hantech_A018-12KR2A_cool_states.ir` - practical single-frame Cool mode state remote
 - `tools/generate_hantech_a018.py` - parser, decoder, checksum validator, and generator
 
 ## Verified captures
@@ -76,7 +77,22 @@ The output is written to:
 ACs/Hantech/Hantech_A018-12KR2A.ir
 ACs/Hantech/Hantech_A018-12KR2A_android_test.ir
 ACs/Hantech/Hantech_A018-12KR2A_android_repeat_test.ir
+ACs/Hantech/Hantech_A018-12KR2A_cool_states.ir
 ```
+
+## Practical layout
+
+Use `Hantech_A018-12KR2A_cool_states.ir` for Android once the phone is close
+enough to the AC receiver. It avoids the repeat test file and sends one frame per
+tap. The buttons are absolute AC states:
+
+- `Power`
+- `Cool_16C_Fan1_SwingOff` through `Cool_31C_Fan3_SwingOff`
+- `Cool_16C_Fan1_SwingOn` through `Cool_31C_Fan3_SwingOn`
+
+`Cool_16C_Fan1_SwingOff` and `Cool_20C_Fan2_SwingOff` are validated on the target
+unit. Other Cool temperatures use the validated temperature byte pattern. Fan3
+and SwingOn states are inferred from the observed flags and should be tested.
 
 ## Android troubleshooting
 

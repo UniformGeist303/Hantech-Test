@@ -35,6 +35,12 @@ DEFAULT_REPEAT_OUTPUT = (
     / "Hantech"
     / "Hantech_A018-12KR2A_android_repeat_test.ir"
 )
+DEFAULT_COOL_OUTPUT = (
+    Path(__file__).resolve().parents[1]
+    / "ACs"
+    / "Hantech"
+    / "Hantech_A018-12KR2A_cool_states.ir"
+)
 ANDROID_TRAILING_SPACE_US = 45000
 
 
@@ -122,6 +128,17 @@ def packet(byte1: int, byte2: int, byte3: int) -> list[int]:
     return [0x18, byte1, byte2, byte3, 0x00, 0x00, checksum(byte1, byte2, byte3)]
 
 
+def cool_packet(temp_c: int, fan: int, swing: bool = False) -> list[int]:
+    if not 16 <= temp_c <= 31:
+        raise ValueError(f"Unsupported temperature: {temp_c}")
+    if fan not in (1, 2, 3):
+        raise ValueError(f"Unsupported fan speed: {fan}")
+
+    fan_flags = {1: 0x01, 2: 0x02, 3: 0x04}
+    flags = fan_flags[fan] | (0x20 if swing else 0x00)
+    return packet(0xA1, flags, temp_c)
+
+
 def derive_timings(signals: list[Signal]) -> Timings:
     header_marks: list[int] = []
     header_spaces: list[int] = []
@@ -198,6 +215,7 @@ def main() -> None:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--android-output", type=Path, default=DEFAULT_ANDROID_OUTPUT)
     parser.add_argument("--repeat-output", type=Path, default=DEFAULT_REPEAT_OUTPUT)
+    parser.add_argument("--cool-output", type=Path, default=DEFAULT_COOL_OUTPUT)
     args = parser.parse_args()
 
     source_signals = parse_flipper_ir(args.source)
@@ -238,6 +256,16 @@ def main() -> None:
     repeat_lines = header_lines + [
         f"# Android repeat test variant: each button sends two full frames separated by {ANDROID_TRAILING_SPACE_US} us spaces.",
     ]
+    cool_lines = [
+        "Filetype: IR signals file",
+        "Version: 1",
+        "# Hantech/JHS A018-12KR2A mobile AC - practical cool-state remote",
+        "# Single-frame Android-friendly signals with explicit 45000 us trailing spaces.",
+        "# Cool mode has been validated for 16C/Fan1 and 20C/Fan2 on the target unit.",
+        "# Temp buttons are absolute states because the AC remote transmits complete state frames.",
+        "# Fan3 and SwingOn states are inferred from the observed flag bits and still need validation.",
+        f"# Derived timings: header {timings.header_mark} {timings.header_space}, bit {timings.bit_mark}, zero {timings.zero_space}, one {timings.one_space}, end {timings.end_mark}",
+    ]
 
     print("Decoded source signals:")
     for signal in source_signals:
@@ -267,6 +295,15 @@ def main() -> None:
             repeat_frames(signal.data),
         )
 
+        if signal.name == "Power":
+            write_signal(
+                cool_lines,
+                "Power",
+                signal.frequency,
+                signal.duty_cycle,
+                with_trailing_space(signal.data),
+            )
+
     print(
         "Derived timings:",
         timings.header_mark,
@@ -284,6 +321,18 @@ def main() -> None:
         write_signal(android_lines, name, frequency, duty_cycle, with_trailing_space(raw))
         write_signal(repeat_lines, f"{name}_Repeat2", frequency, duty_cycle, repeat_frames(raw))
 
+    for fan in (1, 2, 3):
+        for temp_c in range(16, 32):
+            name = f"Cool_{temp_c}C_Fan{fan}_SwingOff"
+            raw = encode_raw(cool_packet(temp_c, fan, swing=False), timings)
+            write_signal(cool_lines, name, frequency, duty_cycle, with_trailing_space(raw))
+
+    for fan in (1, 2, 3):
+        for temp_c in range(16, 32):
+            name = f"Cool_{temp_c}C_Fan{fan}_SwingOn"
+            raw = encode_raw(cool_packet(temp_c, fan, swing=True), timings)
+            write_signal(cool_lines, name, frequency, duty_cycle, with_trailing_space(raw))
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Wrote {args.output}")
@@ -293,6 +342,9 @@ def main() -> None:
     args.repeat_output.parent.mkdir(parents=True, exist_ok=True)
     args.repeat_output.write_text("\n".join(repeat_lines) + "\n", encoding="utf-8")
     print(f"Wrote {args.repeat_output}")
+    args.cool_output.parent.mkdir(parents=True, exist_ok=True)
+    args.cool_output.write_text("\n".join(cool_lines) + "\n", encoding="utf-8")
+    print(f"Wrote {args.cool_output}")
 
 
 if __name__ == "__main__":
