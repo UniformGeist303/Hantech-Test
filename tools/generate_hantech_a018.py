@@ -23,6 +23,13 @@ DEFAULT_OUTPUT = (
     / "Hantech"
     / "Hantech_A018-12KR2A.ir"
 )
+DEFAULT_ANDROID_OUTPUT = (
+    Path(__file__).resolve().parents[1]
+    / "ACs"
+    / "Hantech"
+    / "Hantech_A018-12KR2A_android_test.ir"
+)
+ANDROID_TRAILING_SPACE_US = 45000
 
 
 @dataclass
@@ -150,6 +157,13 @@ def encode_raw(bytes_: list[int], timings: Timings) -> list[int]:
     return raw
 
 
+def with_trailing_space(data: list[int], trailing_space_us: int = ANDROID_TRAILING_SPACE_US) -> list[int]:
+    """Return Android-friendly mark/space data that explicitly ends with a space."""
+    if len(data) % 2 == 0:
+        return data[:]
+    return data + [trailing_space_us]
+
+
 def write_signal(lines: list[str], name: str, frequency: int, duty_cycle: str, data: list[int]) -> None:
     lines.extend(
         [
@@ -167,6 +181,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--android-output", type=Path, default=DEFAULT_ANDROID_OUTPUT)
     args = parser.parse_args()
 
     source_signals = parse_flipper_ir(args.source)
@@ -192,13 +207,17 @@ def main() -> None:
         "Cool_20C_Fan2_SwingOn_Generated": packet(0xA1, 0x22, 0x14),
     }
 
-    lines = [
+    header_lines = [
         "Filetype: IR signals file",
         "Version: 1",
         "# Hantech/JHS A018-12KR2A mobile AC",
         "# First four signals are original working Flipper captures.",
         "# Generated entries are protocol hypotheses for POCO F5 / IR Blaster Remote tests.",
         f"# Derived timings: header {timings.header_mark} {timings.header_space}, bit {timings.bit_mark}, zero {timings.zero_space}, one {timings.one_space}, end {timings.end_mark}",
+    ]
+    lines = header_lines[:]
+    android_lines = header_lines + [
+        f"# Android test variant: each raw signal has an explicit {ANDROID_TRAILING_SPACE_US} us trailing space.",
     ]
 
     print("Decoded source signals:")
@@ -214,6 +233,13 @@ def main() -> None:
             signal.duty_cycle,
             signal.data,
         )
+        write_signal(
+            android_lines,
+            original_names.get(signal.name, f"{signal.name}_Original"),
+            signal.frequency,
+            signal.duty_cycle,
+            with_trailing_space(signal.data),
+        )
 
     print(
         "Derived timings:",
@@ -227,11 +253,16 @@ def main() -> None:
 
     for name, bytes_ in generated.items():
         print(f"- {name}: {' '.join(f'{value:02X}' for value in bytes_)}")
-        write_signal(lines, name, frequency, duty_cycle, encode_raw(bytes_, timings))
+        raw = encode_raw(bytes_, timings)
+        write_signal(lines, name, frequency, duty_cycle, raw)
+        write_signal(android_lines, name, frequency, duty_cycle, with_trailing_space(raw))
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"Wrote {args.output}")
+    args.android_output.parent.mkdir(parents=True, exist_ok=True)
+    args.android_output.write_text("\n".join(android_lines) + "\n", encoding="utf-8")
+    print(f"Wrote {args.android_output}")
 
 
 if __name__ == "__main__":
