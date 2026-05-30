@@ -8,6 +8,7 @@ import Flipper `.ir` files from a GitHub repository, such as IR Blaster Remote.
 
 - `ACs/Hantech/Hantech_A018-12KR2A.ir` - importable Flipper IR file
 - `ACs/Hantech/Hantech_A018-12KR2A_android_test.ir` - Android test variant with explicit trailing spaces
+- `ACs/Hantech/Hantech_A018-12KR2A_android_repeat_test.ir` - Android test variant with each frame sent twice
 - `tools/generate_hantech_a018.py` - parser, decoder, checksum validator, and generator
 
 ## Verified captures
@@ -74,6 +75,7 @@ The output is written to:
 ```text
 ACs/Hantech/Hantech_A018-12KR2A.ir
 ACs/Hantech/Hantech_A018-12KR2A_android_test.ir
+ACs/Hantech/Hantech_A018-12KR2A_android_repeat_test.ir
 ```
 
 ## Android troubleshooting
@@ -83,7 +85,10 @@ first try `Hantech_A018-12KR2A_android_test.ir`. It contains the same signals,
 but each raw pattern explicitly ends with a `45000` us space. This avoids relying
 on an app importer to auto-pad Flipper raw signals that end with a final mark.
 
-If that still does not work, capture the POCO F5 output with Flipper Zero:
+If that still does not work, try `Hantech_A018-12KR2A_android_repeat_test.ir`.
+It sends every button twice, with a `45000` us space between frames.
+
+If both Android variants fail, capture the POCO F5 output with Flipper Zero:
 
 1. On the Flipper, open `Infrared -> Learn New Remote`.
 2. Point the POCO F5 IR emitter at the Flipper receiver.

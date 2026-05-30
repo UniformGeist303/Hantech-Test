@@ -29,6 +29,12 @@ DEFAULT_ANDROID_OUTPUT = (
     / "Hantech"
     / "Hantech_A018-12KR2A_android_test.ir"
 )
+DEFAULT_REPEAT_OUTPUT = (
+    Path(__file__).resolve().parents[1]
+    / "ACs"
+    / "Hantech"
+    / "Hantech_A018-12KR2A_android_repeat_test.ir"
+)
 ANDROID_TRAILING_SPACE_US = 45000
 
 
@@ -164,6 +170,15 @@ def with_trailing_space(data: list[int], trailing_space_us: int = ANDROID_TRAILI
     return data + [trailing_space_us]
 
 
+def repeat_frames(data: list[int], repeat_count: int = 2) -> list[int]:
+    """Repeat a Flipper raw frame with an explicit inter-frame space."""
+    frame = with_trailing_space(data)
+    repeated: list[int] = []
+    for _ in range(repeat_count):
+        repeated.extend(frame)
+    return repeated
+
+
 def write_signal(lines: list[str], name: str, frequency: int, duty_cycle: str, data: list[int]) -> None:
     lines.extend(
         [
@@ -182,6 +197,7 @@ def main() -> None:
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--android-output", type=Path, default=DEFAULT_ANDROID_OUTPUT)
+    parser.add_argument("--repeat-output", type=Path, default=DEFAULT_REPEAT_OUTPUT)
     args = parser.parse_args()
 
     source_signals = parse_flipper_ir(args.source)
@@ -219,6 +235,9 @@ def main() -> None:
     android_lines = header_lines + [
         f"# Android test variant: each raw signal has an explicit {ANDROID_TRAILING_SPACE_US} us trailing space.",
     ]
+    repeat_lines = header_lines + [
+        f"# Android repeat test variant: each button sends two full frames separated by {ANDROID_TRAILING_SPACE_US} us spaces.",
+    ]
 
     print("Decoded source signals:")
     for signal in source_signals:
@@ -240,6 +259,13 @@ def main() -> None:
             signal.duty_cycle,
             with_trailing_space(signal.data),
         )
+        write_signal(
+            repeat_lines,
+            original_names.get(signal.name, f"{signal.name}_Original_Repeat2"),
+            signal.frequency,
+            signal.duty_cycle,
+            repeat_frames(signal.data),
+        )
 
     print(
         "Derived timings:",
@@ -256,6 +282,7 @@ def main() -> None:
         raw = encode_raw(bytes_, timings)
         write_signal(lines, name, frequency, duty_cycle, raw)
         write_signal(android_lines, name, frequency, duty_cycle, with_trailing_space(raw))
+        write_signal(repeat_lines, f"{name}_Repeat2", frequency, duty_cycle, repeat_frames(raw))
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -263,6 +290,9 @@ def main() -> None:
     args.android_output.parent.mkdir(parents=True, exist_ok=True)
     args.android_output.write_text("\n".join(android_lines) + "\n", encoding="utf-8")
     print(f"Wrote {args.android_output}")
+    args.repeat_output.parent.mkdir(parents=True, exist_ok=True)
+    args.repeat_output.write_text("\n".join(repeat_lines) + "\n", encoding="utf-8")
+    print(f"Wrote {args.repeat_output}")
 
 
 if __name__ == "__main__":
