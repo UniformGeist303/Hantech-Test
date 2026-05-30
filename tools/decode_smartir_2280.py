@@ -20,6 +20,13 @@ DEFAULT_OUTPUT = (
 )
 DEFAULT_DOC = Path(__file__).resolve().parents[1] / "docs" / "smartir_2280_decoded.md"
 TRAILING_SPACE_US = 45000
+HANTECH_HEADER_MARK_US = 8807
+HANTECH_HEADER_SPACE_US = 4380
+HANTECH_BIT_MARK_US = 544
+HANTECH_ZERO_SPACE_US = 549
+HANTECH_ONE_SPACE_US = 1655
+HANTECH_END_MARK_US = 584
+SWING_BYTES = (0x18, 0x81, 0x21, 0x10, 0x00, 0x00, 0x4E)
 
 
 @dataclass(frozen=True)
@@ -75,6 +82,17 @@ def checksum(byte1: int, byte2: int, byte3: int) -> int:
     return (0x100 - ((byte1 + byte2 + byte3) & 0xFF)) & 0xFF
 
 
+def hantech_bytes_to_durations(bytes_: tuple[int, ...]) -> list[int]:
+    durations = [HANTECH_HEADER_MARK_US, HANTECH_HEADER_SPACE_US]
+    for byte in bytes_:
+        for bit_index in range(7, -1, -1):
+            bit = (byte >> bit_index) & 1
+            durations.append(HANTECH_BIT_MARK_US)
+            durations.append(HANTECH_ONE_SPACE_US if bit else HANTECH_ZERO_SPACE_US)
+    durations.append(HANTECH_END_MARK_US)
+    return durations
+
+
 def iter_leaves(value: object, path: tuple[str, ...] = ()) -> list[tuple[tuple[str, ...], str]]:
     if isinstance(value, str):
         return [(path, value)]
@@ -105,12 +123,12 @@ def command_name(path: tuple[str, ...]) -> str:
     mode, fan, temp = path
     fan_name = {"low": "Fan1", "mid": "Fan2", "high": "Fan3"}[fan]
     if mode == "cool":
-        return f"Cool_{temp}C_{fan_name}"
+        return f"Cool_{temp}_{fan_name}"
     if mode == "dry":
         return "Dry"
     if mode == "fan_only":
         fan_number = {"low": "1", "mid": "2", "high": "3"}[fan]
-        return f"Fan_only_{fan_number}"
+        return f"Fan_only{fan_number}"
     return "_".join(path)
 
 
@@ -120,18 +138,26 @@ def ordered_commands(commands: list[DecodedCommand]) -> list[tuple[str, DecodedC
     ordered: list[tuple[str, DecodedCommand]] = [
         ("On", by_path[("cool", "high", "16")]),
         ("Off", by_path[("off",)]),
-        ("Cool_16C_Fan3", by_path[("cool", "high", "16")]),
+        ("Cool_16_Fan3", by_path[("cool", "high", "16")]),
         ("Dry", by_path[("dry", "low", "16")]),
-        ("Fan_only_1", by_path[("fan_only", "low", "16")]),
-        ("Fan_only_2", by_path[("fan_only", "mid", "16")]),
-        ("Fan_only_3", by_path[("fan_only", "high", "16")]),
+        ("Fan_only1", by_path[("fan_only", "low", "16")]),
+        ("Fan_only2", by_path[("fan_only", "mid", "16")]),
+        ("Fan_only3", by_path[("fan_only", "high", "16")]),
+        (
+            "Swing",
+            DecodedCommand(
+                path=("manual", "swing"),
+                durations=hantech_bytes_to_durations(SWING_BYTES),
+                bytes_=SWING_BYTES,
+            ),
+        ),
     ]
 
     for fan in ("low", "mid", "high"):
         for temp in range(16, 26):
             path = ("cool", fan, str(temp))
             name = command_name(path)
-            if name == "Cool_16C_Fan3":
+            if name == "Cool_16_Fan3":
                 continue
             ordered.append((name, by_path[path]))
 
@@ -147,7 +173,8 @@ def write_flipper_ir(commands: list[DecodedCommand], output: Path) -> None:
         "# Also sold/rebranded as Hantech A018-12KR2/A family devices.",
         "# Decoded from SmartIR 2280.json Broadlink Base64 codes.",
         "# Output format: Flipper raw, Android-friendly trailing space.",
-        "# Contains: On alias, Off, Cool 16-25C Fan 1-3, Dry, Fan only 1-3.",
+        "# Contains: On alias, Off, Cool 16-25C Fan 1-3, Dry, Fan only 1-3, Swing.",
+        "# Swing was decoded from a working Flipper Zero capture: 18 81 21 10 00 00 4E.",
         "# Not included: Night/Sleep, Timer, C/F toggle; SmartIR 2280 does not contain those codes.",
     ]
 
