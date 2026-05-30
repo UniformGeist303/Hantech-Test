@@ -138,27 +138,24 @@ def ordered_commands(commands: list[DecodedCommand]) -> list[tuple[str, DecodedC
     ordered: list[tuple[str, DecodedCommand]] = [
         ("On", by_path[("cool", "high", "16")]),
         ("Off", by_path[("off",)]),
-        ("Cool_16_Fan3", by_path[("cool", "high", "16")]),
-        ("Dry", by_path[("dry", "low", "16")]),
-        ("Fan_only1", by_path[("fan_only", "low", "16")]),
-        ("Fan_only2", by_path[("fan_only", "mid", "16")]),
-        ("Fan_only3", by_path[("fan_only", "high", "16")]),
         (
-            "Swing",
+            "Cool_16_Fan3_Swing",
             DecodedCommand(
-                path=("manual", "swing"),
+                path=("manual", "cool_16_fan3_swing"),
                 durations=hantech_bytes_to_durations(SWING_BYTES),
                 bytes_=SWING_BYTES,
             ),
         ),
+        ("Dry", by_path[("dry", "low", "16")]),
+        ("Fan_only1", by_path[("fan_only", "low", "16")]),
+        ("Fan_only2", by_path[("fan_only", "mid", "16")]),
+        ("Fan_only3", by_path[("fan_only", "high", "16")]),
     ]
 
     for fan in ("low", "mid", "high"):
         for temp in range(16, 26):
             path = ("cool", fan, str(temp))
             name = command_name(path)
-            if name == "Cool_16_Fan3":
-                continue
             ordered.append((name, by_path[path]))
 
     return ordered
@@ -171,7 +168,8 @@ def write_flipper_ir(commands: list[DecodedCommand], output: Path) -> None:
         "Version: 1",
         "# Hantech/JHS A018-12KR2A mobile air conditioner",
         "# Also sold/rebranded as Hantech A018-12KR2/A family devices.",
-        "# Contains: On alias, Off, Cool 16-25C Fan 1-3, Dry, Fan only 1-3, Swing.",
+        "# Contains: On alias, Off, Cool 16-25C Fan 1-3, Dry, Fan only 1-3.",
+        "# Cool_16_Fan3_Swing uses the same state with swing enabled.",
         "# Not included: Night/Sleep, Timer, C/F toggle.",
     ]
 

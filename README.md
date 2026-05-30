@@ -111,15 +111,15 @@ use:
 
 - `On`
 - `Off`
-- `Cool_16_Fan3`
+- `Cool_16_Fan3_Swing`
 - `Dry`
 - `Fan_only1`
 - `Fan_only2`
 - `Fan_only3`
-- `Swing`
 
 The rest of the file contains Cool states from 16C to 25C for fan speeds 1-3.
-`Swing` is the working `Winkel_an` capture decoded as `18 81 21 10 00 00 4E`.
+`Cool_16_Fan3_Swing` is the working `Winkel_an` capture decoded as
+`18 81 21 10 00 00 4E`.
 
 ## Android troubleshooting
 
