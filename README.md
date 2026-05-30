@@ -10,10 +10,11 @@ import Flipper `.ir` files from a GitHub repository, such as IR Blaster Remote.
 - `ACs/Hantech/Hantech_A018-12KR2A_android_test.ir` - Android test variant with explicit trailing spaces
 - `ACs/Hantech/Hantech_A018-12KR2A_android_repeat_test.ir` - Android test variant with each frame sent twice
 - `ACs/Hantech/Hantech_A018-12KR2A_cool_states.ir` - practical single-frame Cool mode state remote
-- `ACs/Hantech/Hantech_A018-12KR2A_smartir_2280.ir` - decoded SmartIR 2280 commands
+- `ACs/Hantech/Hantech_A018-12KR2A_smartir_2280.ir` - cleaned SmartIR 2280 remote for public sharing
 - `tools/generate_hantech_a018.py` - parser, decoder, checksum validator, and generator
 - `tools/decode_smartir_2280.py` - Broadlink Base64 decoder for SmartIR 2280
 - `docs/smartir_2280_decoded.md` - decoded SmartIR byte table
+- `flipper-irdb/ACs/Hantech/Hantech_A018-12KR2A.ir` - clean contribution copy for a Flipper-IRDB fork
 
 ## Verified captures
 
@@ -103,6 +104,20 @@ tap. The buttons are absolute AC states:
 `Cool_16C_Fan1_SwingOff` and `Cool_20C_Fan2_SwingOff` are validated on the target
 unit. Other Cool temperatures use the validated temperature byte pattern. Fan3
 and SwingOn states are inferred from the observed flags and should be tested.
+
+For a public Flipper-IRDB style contribution, prefer
+`Hantech_A018-12KR2A_smartir_2280.ir`. Its first buttons are ordered for everyday
+use:
+
+- `On`
+- `Off`
+- `Cool_16C_Fan3`
+- `Dry`
+- `Fan_only_1`
+- `Fan_only_2`
+- `Fan_only_3`
+
+The rest of the file contains Cool states from 16C to 25C for fan speeds 1-3.
 
 ## Android troubleshooting
 

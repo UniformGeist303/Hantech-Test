@@ -101,38 +101,61 @@ def decode_commands(source: Path) -> list[DecodedCommand]:
 
 def command_name(path: tuple[str, ...]) -> str:
     if path == ("off",):
-        return "Off_SmartIR"
+        return "Off"
     mode, fan, temp = path
     fan_name = {"low": "Fan1", "mid": "Fan2", "high": "Fan3"}[fan]
     if mode == "cool":
-        return f"Cool_{temp}C_{fan_name}_SmartIR"
+        return f"Cool_{temp}C_{fan_name}"
     if mode == "dry":
-        return f"Dry_{fan_name}_SmartIR"
+        return "Dry"
     if mode == "fan_only":
-        return f"FanOnly_{fan_name}_SmartIR"
-    return "_".join(path) + "_SmartIR"
+        fan_number = {"low": "1", "mid": "2", "high": "3"}[fan]
+        return f"Fan_only_{fan_number}"
+    return "_".join(path)
+
+
+def ordered_commands(commands: list[DecodedCommand]) -> list[tuple[str, DecodedCommand]]:
+    by_path = {command.path: command for command in commands}
+
+    ordered: list[tuple[str, DecodedCommand]] = [
+        ("On", by_path[("cool", "high", "16")]),
+        ("Off", by_path[("off",)]),
+        ("Cool_16C_Fan3", by_path[("cool", "high", "16")]),
+        ("Dry", by_path[("dry", "low", "16")]),
+        ("Fan_only_1", by_path[("fan_only", "low", "16")]),
+        ("Fan_only_2", by_path[("fan_only", "mid", "16")]),
+        ("Fan_only_3", by_path[("fan_only", "high", "16")]),
+    ]
+
+    for fan in ("low", "mid", "high"):
+        for temp in range(16, 26):
+            path = ("cool", fan, str(temp))
+            name = command_name(path)
+            if name == "Cool_16C_Fan3":
+                continue
+            ordered.append((name, by_path[path]))
+
+    return ordered
 
 
 def write_flipper_ir(commands: list[DecodedCommand], output: Path) -> None:
     seen_names: set[str] = set()
-    seen_packets: set[tuple[int, ...]] = set()
     lines = [
         "Filetype: IR signals file",
         "Version: 1",
-        "# Hantech/JHS A018-12KR2A - decoded from SmartIR 2280.json",
-        "# Source format: Broadlink Base64. Output format: Flipper raw, Android-friendly trailing space.",
-        "# SmartIR contains off, cool 16-25, dry, and fan_only. It does not contain night/sleep/timer/C-F.",
+        "# Hantech/JHS A018-12KR2A mobile air conditioner",
+        "# Also sold/rebranded as Hantech A018-12KR2/A family devices.",
+        "# Decoded from SmartIR 2280.json Broadlink Base64 codes.",
+        "# Output format: Flipper raw, Android-friendly trailing space.",
+        "# Contains: On alias, Off, Cool 16-25C Fan 1-3, Dry, Fan only 1-3.",
+        "# Not included: Night/Sleep, Timer, C/F toggle; SmartIR 2280 does not contain those codes.",
     ]
 
-    for command in commands:
-        name = command_name(command.path)
-        if command.bytes_ in seen_packets and name.startswith(("Dry_", "FanOnly_")):
-            continue
+    for name, command in ordered_commands(commands):
         if name in seen_names:
             continue
 
         seen_names.add(name)
-        seen_packets.add(command.bytes_)
         lines.extend(
             [
                 "# ",
