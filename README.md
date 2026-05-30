@@ -10,7 +10,10 @@ import Flipper `.ir` files from a GitHub repository, such as IR Blaster Remote.
 - `ACs/Hantech/Hantech_A018-12KR2A_android_test.ir` - Android test variant with explicit trailing spaces
 - `ACs/Hantech/Hantech_A018-12KR2A_android_repeat_test.ir` - Android test variant with each frame sent twice
 - `ACs/Hantech/Hantech_A018-12KR2A_cool_states.ir` - practical single-frame Cool mode state remote
+- `ACs/Hantech/Hantech_A018-12KR2A_smartir_2280.ir` - decoded SmartIR 2280 commands
 - `tools/generate_hantech_a018.py` - parser, decoder, checksum validator, and generator
+- `tools/decode_smartir_2280.py` - Broadlink Base64 decoder for SmartIR 2280
+- `docs/smartir_2280_decoded.md` - decoded SmartIR byte table
 
 ## Verified captures
 
@@ -78,6 +81,13 @@ ACs/Hantech/Hantech_A018-12KR2A.ir
 ACs/Hantech/Hantech_A018-12KR2A_android_test.ir
 ACs/Hantech/Hantech_A018-12KR2A_android_repeat_test.ir
 ACs/Hantech/Hantech_A018-12KR2A_cool_states.ir
+ACs/Hantech/Hantech_A018-12KR2A_smartir_2280.ir
+```
+
+Decode the SmartIR Hantech database file:
+
+```powershell
+python .\tools\decode_smartir_2280.py
 ```
 
 ## Practical layout
